@@ -1889,7 +1889,7 @@ type FSharpProjectContext(thisCcu: CcuThunk, assemblies: FSharpAssembly list, ad
 
 [<Sealed>]
 // 'details' is an option because the creation of the tcGlobals etc. for the project may have failed.
-type FSharpCheckProjectResults(keepAssemblyContents, errors: FSharpErrorInfo[], details:(TcGlobals*TcImports*CcuThunk*ModuleOrNamespaceType*TcSymbolUses list*TopAttribs option*CompileOps.IRawFSharpAssemblyData option * ILAssemblyRef * AccessorDomain * TypedImplFile list option * string list) option, reactorOps: IReactorOperations) =
+type FSharpCheckProjectResults(keepAssemblyContents, errors: FSharpErrorInfo[], details:(TcConfig*TcGlobals*TcImports*CcuThunk*ModuleOrNamespaceType*TcSymbolUses list*TopAttribs option*CompileOps.IRawFSharpAssemblyData option * ILAssemblyRef * AccessorDomain * TypedImplFile list option * string list) option, reactorOps: IReactorOperations) =
 
     let getDetails() = 
         match details with 
@@ -1901,12 +1901,12 @@ type FSharpCheckProjectResults(keepAssemblyContents, errors: FSharpErrorInfo[], 
     member info.HasCriticalErrors = details.IsNone
 
     member info.AssemblySignature =  
-        let (tcGlobals, tcImports, thisCcu, ccuSig, _tcSymbolUses, topAttribs, _tcAssemblyData, _ilAssemRef, _ad, _tcAssemblyExpr, _dependencyFiles) = getDetails()
+        let (_tcConfig, tcGlobals, tcImports, thisCcu, ccuSig, _tcSymbolUses, topAttribs, _tcAssemblyData, _ilAssemRef, _ad, _tcAssemblyExpr, _dependencyFiles) = getDetails()
         FSharpAssemblySignature(tcGlobals, thisCcu, tcImports, topAttribs, ccuSig)
 
     member info.AssemblyContents =  
         if not keepAssemblyContents then invalidOp "The 'keepAssemblyContents' flag must be set to tru on the FSharpChecker in order to access the checked contents of assemblies"
-        let (tcGlobals, tcImports, thisCcu, _ccuSig, _tcSymbolUses, _topAttribs, _tcAssemblyData, _ilAssemRef, _ad, tcAssemblyExpr, _dependencyFiles) = getDetails()
+        let (_tcConfig, tcGlobals, tcImports, thisCcu, _ccuSig, _tcSymbolUses, _topAttribs, _tcAssemblyData, _ilAssemRef, _ad, tcAssemblyExpr, _dependencyFiles) = getDetails()
         let mimpls = 
             match tcAssemblyExpr with 
             | None -> []
@@ -1915,7 +1915,7 @@ type FSharpCheckProjectResults(keepAssemblyContents, errors: FSharpErrorInfo[], 
 
     // Not, this does not have to be a SyncOp, it can be called from any thread
     member info.GetUsesOfSymbol(symbol:FSharpSymbol) = 
-        let (tcGlobals, _tcImports, _thisCcu, _ccuSig, tcSymbolUses, _topAttribs, _tcAssemblyData, _ilAssemRef, _ad, _tcAssemblyExpr, _dependencyFiles) = getDetails()
+        let (_tcConfig, tcGlobals, _tcImports, _thisCcu, _ccuSig, tcSymbolUses, _topAttribs, _tcAssemblyData, _ilAssemRef, _ad, _tcAssemblyExpr, _dependencyFiles) = getDetails()
         // This probably doesn't need to be run on the reactor since all data touched by GetUsesOfSymbol is immutable.
         reactorOps.EnqueueAndAwaitOpAsync("GetUsesOfSymbol", fun _ct -> 
             [| for r in tcSymbolUses do yield! r.GetUsesOfSymbol(symbol.Item) |] 
@@ -1926,7 +1926,7 @@ type FSharpCheckProjectResults(keepAssemblyContents, errors: FSharpErrorInfo[], 
 
     // Not, this does not have to be a SyncOp, it can be called from any thread
     member info.GetAllUsesOfAllSymbols() = 
-        let (tcGlobals, tcImports, thisCcu, _ccuSig, tcSymbolUses, _topAttribs, _tcAssemblyData, _ilAssemRef, _ad, _tcAssemblyExpr, _dependencyFiles) = getDetails()
+        let (_tcConfig, tcGlobals, tcImports, thisCcu, _ccuSig, tcSymbolUses, _topAttribs, _tcAssemblyData, _ilAssemRef, _ad, _tcAssemblyExpr, _dependencyFiles) = getDetails()
         // This probably doesn't need to be run on the reactor since all data touched by GetAllUsesOfSymbols is immutable.
         reactorOps.EnqueueAndAwaitOpAsync("GetAllUsesOfAllSymbols", fun _ct -> 
             [| for r in tcSymbolUses do 
@@ -1936,23 +1936,25 @@ type FSharpCheckProjectResults(keepAssemblyContents, errors: FSharpErrorInfo[], 
                     yield FSharpSymbolUse(tcGlobals, denv, symbol, itemOcc, m) |]) 
 
     member info.ProjectContext = 
-        let (tcGlobals, tcImports, thisCcu, _ccuSig, _tcSymbolUses, _topAttribs, _tcAssemblyData, _ilAssemRef, ad, _tcAssemblyExpr, _dependencyFiles) = getDetails()
+        let (_tcConfig, tcGlobals, tcImports, thisCcu, _ccuSig, _tcSymbolUses, _topAttribs, _tcAssemblyData, _ilAssemRef, ad, _tcAssemblyExpr, _dependencyFiles) = getDetails()
         let assemblies = 
             [ for x in tcImports.GetImportedAssemblies() do
                 yield FSharpAssembly(tcGlobals, tcImports, x.FSharpViewOfMetadata) ]
         FSharpProjectContext(thisCcu, assemblies, ad) 
 
     member info.RawFSharpAssemblyData = 
-        let (_tcGlobals, _tcImports, _thisCcu, _ccuSig, _tcSymbolUses, _topAttribs, tcAssemblyData, _ilAssemRef, _ad, _tcAssemblyExpr, _dependencyFiles) = getDetails()
+        let (_tcConfig, _tcGlobals, _tcImports, _thisCcu, _ccuSig, _tcSymbolUses, _topAttribs, tcAssemblyData, _ilAssemRef, _ad, _tcAssemblyExpr, _dependencyFiles) = getDetails()
         tcAssemblyData
 
     member info.DependencyFiles = 
-        let (_tcGlobals, _tcImports, _thisCcu, _ccuSig, _tcSymbolUses, _topAttribs, _tcAssemblyData, _ilAssemRef, _ad, _tcAssemblyExpr, dependencyFiles) = getDetails()
+        let (_tcConfig, _tcGlobals, _tcImports, _thisCcu, _ccuSig, _tcSymbolUses, _topAttribs, _tcAssemblyData, _ilAssemRef, _ad, _tcAssemblyExpr, dependencyFiles) = getDetails()
         dependencyFiles
 
     member info.AssemblyFullName = 
-        let (_tcGlobals, _tcImports, _thisCcu, _ccuSig, _tcSymbolUses, _topAttribs, _tcAssemblyData, ilAssemRef, _ad, _tcAssemblyExpr, _dependencyFiles) = getDetails()
+        let (_tcConfig, _tcGlobals, _tcImports, _thisCcu, _ccuSig, _tcSymbolUses, _topAttribs, _tcAssemblyData, ilAssemRef, _ad, _tcAssemblyExpr, _dependencyFiles) = getDetails()
         ilAssemRef.QualifiedName
+
+    member info.GetDetails() = getDetails()
 
 [<Sealed>]
 /// A live object of this type keeps the background corresponding background builder (and type providers) alive (through reference-counting).
@@ -2257,6 +2259,22 @@ module CompileHelpers =
             tryCompile errorLogger (fun exiter -> 
                 mainCompile (argv, referenceResolver, (*bannerAlreadyPrinted*)true, (*openBinariesInMemory*)true, exiter, loggerProvider, tcImportsCapture, dynamicAssemblyCreator) )
     
+        errors.ToArray(), result
+
+    let compileFromChecked (cpr: FSharpCheckProjectResults, referenceResolver, tcImportsCapture, dynamicAssemblyCreator)  = 
+    
+        let errors, errorLogger, loggerProvider = mkCompilationErorHandlers()
+        
+        let (tcConfig, tcGlobals, tcImports, thisCcu, ccuSig, tcSymbolUses, topAttribs, tcAssemblyData, ilAssemRef, ad, tcAssemblyExpr, dependencyFiles) = cpr.GetDetails() 
+
+        let result = 
+            match tcAssemblyExpr, topAttribs, tcAssemblyData with
+            | Some tcAssemblyExpr, Some topAttribs, Some tcAssemblyData ->
+                let assemblyName = tcAssemblyData.ShortAssemblyName
+                tryCompile errorLogger (fun exiter -> 
+                    compileChecked (tcGlobals, tcImports, tcImports, thisCcu, tcAssemblyExpr, topAttribs, tcConfig, tcConfig.outputFile.Value, None, assemblyName, errorLogger, exiter, tcImportsCapture, dynamicAssemblyCreator))
+            | _ -> 1
+
         errors.ToArray(), result
 
     let compileFromAsts (referenceResolver, asts, assemblyName, outFile, dependencies, noframework, pdbFile, executable, tcImportsCapture, dynamicAssemblyCreator) =
@@ -2765,7 +2783,7 @@ type BackgroundCompiler(referenceResolver, projectCacheSize, keepAssemblyContent
         | Some builder -> 
             let (tcProj, ilAssemRef, tcAssemblyDataOpt, tcAssemblyExprOpt)  = builder.GetCheckResultsAndImplementationsForProject(ct)
             let errors = [| yield! creationErrors; yield! Parser.CreateErrorInfos (tcProj.TcConfig, true, Microsoft.FSharp.Compiler.TcGlobals.DummyFileNameForRangesWithoutASpecificLocation, tcProj.Errors) |]
-            FSharpCheckProjectResults (keepAssemblyContents, errors, Some(tcProj.TcGlobals, tcProj.TcImports, tcProj.TcState.Ccu, tcProj.TcState.PartialAssemblySignature, tcProj.TcSymbolUses, tcProj.TopAttribs, tcAssemblyDataOpt, ilAssemRef, tcProj.TcEnvAtEnd.AccessRights, tcAssemblyExprOpt, tcProj.TcDependencyFiles), reactorOps)
+            FSharpCheckProjectResults (keepAssemblyContents, errors, Some(tcProj.TcConfig, tcProj.TcGlobals, tcProj.TcImports, tcProj.TcState.Ccu, tcProj.TcState.PartialAssemblySignature, tcProj.TcSymbolUses, tcProj.TopAttribs, tcAssemblyDataOpt, ilAssemRef, tcProj.TcEnvAtEnd.AccessRights, tcAssemblyExprOpt, tcProj.TcDependencyFiles), reactorOps)
 
     /// Get the timestamp that would be on the output if fully built immediately
     member private bc.GetLogicalTimeStampForProject(cache, options, ct) =
@@ -2976,6 +2994,9 @@ type FSharpChecker(referenceResolver, projectCacheSize, keepAssemblyContents, ke
     member ic.Compile (ast:ParsedInput list, assemblyName:string, outFile:string, dependencies:string list, ?pdbFile:string, ?executable:bool, ?noframework:bool) =
             let noframework = defaultArg noframework false
             CompileHelpers.compileFromAsts (referenceResolver, ast, assemblyName, outFile, dependencies, noframework, pdbFile, executable, None, None)
+
+    member ic.Compile(cpr: FSharpCheckProjectResults) =
+        CompileHelpers.compileFromChecked (cpr, referenceResolver, None, None)
 
     member ic.CompileToDynamicAssembly (otherFlags: string[], execute: (TextWriter * TextWriter) option)  = 
         CompileHelpers.setOutputStreams execute
@@ -3225,7 +3246,7 @@ type FsiInteractiveChecker(referenceResolver, reactorOps: IReactorOperations, tc
                 | Parser.TypeCheckAborted.No scope ->
                     let errors = [|  yield! parseErrors; yield! tcErrors |]
                     let typeCheckResults = FSharpCheckFileResults (errors, Some scope, dependencyFiles, None, reactorOps)   
-                    let projectResults = FSharpCheckProjectResults (keepAssemblyContents, errors, Some(tcGlobals, tcImports, scope.ThisCcu, scope.CcuSig, [scope.ScopeSymbolUses], None, None, mkSimpleAssRef "stdin", tcState.TcEnvFromImpls.AccessRights, None, dependencyFiles), reactorOps)
+                    let projectResults = FSharpCheckProjectResults (keepAssemblyContents, errors, Some(tcConfig, tcGlobals, tcImports, scope.ThisCcu, scope.CcuSig, [scope.ScopeSymbolUses], None, None, mkSimpleAssRef "stdin", tcState.TcEnvFromImpls.AccessRights, None, dependencyFiles), reactorOps)
                     parseResults, typeCheckResults, projectResults
                 | _ -> 
                     failwith "unexpected aborted"

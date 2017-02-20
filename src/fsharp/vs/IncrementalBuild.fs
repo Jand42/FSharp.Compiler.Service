@@ -1260,7 +1260,7 @@ type RawFSharpAssemblyDataBackedByLanguageService (tcConfig,tcGlobals,tcState:Tc
 
 
 /// Manages an incremental build graph for the build of a single F# project
-type IncrementalBuilder(frameworkTcImportsCache: FrameworkImportsCache, tcConfig: TcConfig, projectDirectory, outfile, 
+type IncrementalBuilder(frameworkTcImportsCache: FrameworkImportsCache, tcConfig: TcConfig, projectDirectory, outfile, pdbFile,
                         assemblyName, niceNameGen: Ast.NiceNameGenerator, lexResourceManager,
                         sourceFiles, projectReferences: IProjectReference list, loadClosureOpt: LoadClosure option, ensureReactive, 
                         keepAssemblyContents, keepAllBackgroundResolutions) =
@@ -1873,11 +1873,11 @@ type IncrementalBuilder(frameworkTcImportsCache: FrameworkImportsCache, tcConfig
 
             let niceNameGen = NiceNameGenerator()
         
-            let outfile, _, assemblyName = tcConfigB.DecideNames sourceFilesNew
+            let outfile, pdbFile, assemblyName = tcConfigB.DecideNames sourceFilesNew
         
             let builder = 
                 new IncrementalBuilder(frameworkTcImportsCache,
-                                        tcConfig, projectDirectory, outfile, assemblyName, niceNameGen,
+                                        tcConfig, projectDirectory, outfile, pdbFile, assemblyName, niceNameGen,
                                         resourceManager, sourceFilesNew, projectReferences, loadClosureOpt, ensureReactive=true, 
                                         keepAssemblyContents=keepAssemblyContents, 
                                         keepAllBackgroundResolutions=keepAllBackgroundResolutions)

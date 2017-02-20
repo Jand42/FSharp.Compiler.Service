@@ -66,6 +66,38 @@ val compileOfAst :
     dynamicAssemblyCreator: (TcGlobals * string * ILModuleDef -> unit) option
       -> unit
 
+val compileOfAst : 
+    referenceResolver: ReferenceResolver.Resolver * 
+    openBinariesInMemory: bool * 
+    assemblyName:string * 
+    target:CompilerTarget * 
+    targetDll:string * 
+    targetPdb:string option * 
+    dependencies:string list * 
+    noframework:bool *
+    exiter:Exiter * 
+    loggerProvider: ErrorLoggerProvider * 
+    inputs:ParsedInput list *
+    tcImportsCapture : (TcImports -> unit) option *
+    dynamicAssemblyCreator: (TcGlobals * string * ILModuleDef -> unit) option
+      -> unit
+
+val compileChecked :
+    tcGlobals : TcGlobals *
+    tcImports : TcImports *
+    frameworkTcImports : TcImports *
+    generatedCcu : CcuThunk *
+    typedImplFiles : TypedImplFile list *
+    topAttrs : TopAttribs *
+    tcConfig : TcConfig * 
+    outfile : string *
+    pdbFile : string option *
+    assemblyName : string *
+    errorLogger : ErrorLogger *
+    exiter : Exiter * 
+    tcImportsCapture : (TcImports -> unit) option *
+    dynamicAssemblyCreator: (TcGlobals * string * ILModuleDef -> unit) option
+      -> unit
 
 /// Part of LegacyHostedCompilerForTesting
 type InProcErrorLoggerProvider = 

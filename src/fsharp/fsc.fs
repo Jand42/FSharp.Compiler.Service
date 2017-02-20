@@ -2086,6 +2086,15 @@ let compileOfAst (referenceResolver, openBinariesInMemory, assemblyName, target,
     |> main3
     |> main4 dynamicAssemblyCreator
 
+let compileChecked (tcGlobals, tcImports, frameworkTcImports, generatedCcu, typedImplFiles, topAttrs, tcConfig, outfile, pdbfile, assemblyName, errorLogger, exiter, tcImportsCapture, dynamicAssemblyCreator) = 
+
+    Args(tcGlobals, tcImports, frameworkTcImports, generatedCcu, typedImplFiles, topAttrs, tcConfig, outfile, pdbfile, assemblyName, errorLogger, exiter)
+    |> main1
+    |> main2a
+    |> main2b (tcImportsCapture,dynamicAssemblyCreator)
+    |> main3 
+    |> main4 dynamicAssemblyCreator
+
 let mainCompile (argv, referenceResolver, bannerAlreadyPrinted, openBinariesInMemory, exiter, errorLoggerProvider, tcImportsCapture, dynamicAssemblyCreator) = 
     //System.Runtime.GCSettings.LatencyMode <- System.Runtime.GCLatencyMode.Batch
     typecheckAndCompile(argv, referenceResolver, bannerAlreadyPrinted, openBinariesInMemory, exiter, errorLoggerProvider, tcImportsCapture, dynamicAssemblyCreator)

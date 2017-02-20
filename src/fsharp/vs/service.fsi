@@ -580,6 +580,10 @@ type FSharpChecker =
     /// The first argument is ignored and can just be "fsc.exe".
     member Compile: argv:string [] -> FSharpErrorInfo [] * int
     
+    /// Compile a type-checked project.
+    /// Add optional extra embedded resources, files names are resolved via the FileSystem API.
+    member Compile: cpr:FSharpCheckProjectResults -> FSharpErrorInfo [] * int
+
     /// TypeCheck and compile provided AST
     member Compile: ast:ParsedInput list * assemblyName:string * outFile:string * dependencies:string list * ?pdbFile:string * ?executable:bool * ?noframework:bool -> FSharpErrorInfo [] * int
 
