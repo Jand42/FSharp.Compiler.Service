@@ -2166,6 +2166,22 @@ module CompileHelpers =
     
         errors.ToArray(), result
 
+    let compileFromArgsPreserve (ctok, argv: string[], legacyReferenceResolver, tcImportsCapture, dynamicAssemblyCreator)  = 
+    
+        let errors, errorLogger, loggerProvider = mkCompilationErorHandlers()
+        let mutable compileResults = None
+        let result = 
+            tryCompile errorLogger (fun exiter -> 
+                compileResults <- Some <| mainCompilePreserve (ctok, argv, legacyReferenceResolver, (*bannerAlreadyPrinted*)true, (*openBinariesInMemory*)true, (*defaultCopyFSharpCore*)false, exiter, loggerProvider, tcImportsCapture, dynamicAssemblyCreator) )
+    
+        let r = compileResults.Value
+
+        r.
+
+        FSharpCheckProjectResults (options.ProjectFileName, keepAssemblyContents, Array.ofList creationErrors, None, reactorOps)
+
+        errors.ToArray(), result
+
     let compileFromAsts (ctok, legacyReferenceResolver, asts, assemblyName, outFile, dependencies, noframework, pdbFile, executable, tcImportsCapture, dynamicAssemblyCreator) =
 
         let errors, errorLogger, loggerProvider = mkCompilationErorHandlers()

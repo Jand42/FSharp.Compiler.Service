@@ -53,6 +53,19 @@ val mainCompile :
     dynamicAssemblyCreator: (TcGlobals * string * ILModuleDef -> unit) option
       -> unit
 
+val mainCompilePreserve : 
+    ctok: CompilationThreadToken *
+    argv: string[] * 
+    legacyReferenceResolver: ReferenceResolver.Resolver * 
+    bannerAlreadyPrinted: bool * 
+    openBinariesInMemory: bool * 
+    defaultCopyFSharpCore: bool * 
+    exiter: Exiter * 
+    loggerProvider: ErrorLoggerProvider * 
+    tcImportsCapture: (TcImports -> unit) option *
+    dynamicAssemblyCreator: (TcGlobals * string * ILModuleDef -> unit) option
+      -> TcGlobals * TcImports * Tast.CcuThunk * TcState * Tast.TypedImplFile list * TypeChecker.TopAttribs
+
 val compileOfAst : 
     ctok: CompilationThreadToken *
     legacyReferenceResolver: ReferenceResolver.Resolver * 

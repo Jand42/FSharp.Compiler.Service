@@ -1585,7 +1585,7 @@ type private TypeInThisAssembly (_dummy:obj) = class end
 
 // If the --nocopyfsharpcore switch is not specified, this will:
 // 1) Look into the referenced assemblies, if FSharp.Core.dll is specified, it will copy it to output directory.
-// 2) If not, but FSharp.Core.dll exists beside the compiler binaries, it will copy it to output directory.
+// 2) If not, but FSharp.Core.dll exists beside the compiler binaries, it will ctopy it to output directory.
 // 3) If not, it will produce an error.
 let CopyFSharpCore(outFile: string, referencedDlls: AssemblyReference list) =
     let outDir = Path.GetDirectoryName(outFile)
@@ -1618,7 +1618,7 @@ let CopyFSharpCore(outFile: string, referencedDlls: AssemblyReference list) =
 [<NoEquality; NoComparison>]
 type Args<'T> = Args  of 'T
 
-let main0(ctok, argv, legacyReferenceResolver, bannerAlreadyPrinted, openBinariesInMemory:bool, defaultCopyFSharpCore: bool, exiter:Exiter, errorLoggerProvider : ErrorLoggerProvider, disposables : DisposablesTracker) = 
+let main0(ctok, argv, legacyReferenceResolver, bannerAlreadyPrinted, openBinariesInMemory:bool, defaultCopyFSharpCore: bool, exiter:Exiter, errorLoggerProvider : ErrorLoggerProvider, disposables : DisposablesTracker, persistTcState) = 
 
     // See Bug 735819 
     let lcidFromCodePage = 
@@ -1792,6 +1792,7 @@ let main0(ctok, argv, legacyReferenceResolver, bannerAlreadyPrinted, openBinarie
         TypeCheck(ctok, tcConfig, tcImports, tcGlobals, errorLogger, assemblyName, NiceNameGenerator(), tcEnv0, inputs, exiter)
 
     AbortOnError(errorLogger, exiter)
+    persistTcState |> Option.iter (fun r -> r := Some tcState)
     ReportTime tcConfig "Typechecked"
 
     Args (ctok, tcGlobals, tcImports, frameworkTcImports, tcState.Ccu, typedAssembly, topAttrs, tcConfig, outfile, pdbfile, assemblyName, errorLogger, exiter)
@@ -2057,13 +2058,12 @@ let typecheckAndCompile (ctok, argv, legacyReferenceResolver, bannerAlreadyPrint
     use d = new DisposablesTracker()
     use e = new SaveAndRestoreConsoleEncoding()
 
-    main0(ctok, argv, legacyReferenceResolver, bannerAlreadyPrinted, openBinariesInMemory, defaultCopyFSharpCore, exiter, errorLoggerProvider, d)
+    main0(ctok, argv, legacyReferenceResolver, bannerAlreadyPrinted, openBinariesInMemory, defaultCopyFSharpCore, exiter, errorLoggerProvider, d, None)
     |> main1
     |> main2a
     |> main2b (tcImportsCapture,dynamicAssemblyCreator)
     |> main3 
     |> main4 dynamicAssemblyCreator
-
 
 let compileOfAst (ctok, legacyReferenceResolver, openBinariesInMemory, assemblyName, target, outFile, pdbFile, dllReferences, noframework, exiter, errorLoggerProvider, inputs, tcImportsCapture, dynamicAssemblyCreator) = 
     main1OfAst (ctok, legacyReferenceResolver, openBinariesInMemory, assemblyName, target, outFile, pdbFile, dllReferences, noframework, exiter, errorLoggerProvider, inputs)
@@ -2076,3 +2076,24 @@ let mainCompile (ctok, argv, legacyReferenceResolver, bannerAlreadyPrinted, open
     //System.Runtime.GCSettings.LatencyMode <- System.Runtime.GCLatencyMode.Batch
     typecheckAndCompile(ctok, argv, legacyReferenceResolver, bannerAlreadyPrinted, openBinariesInMemory, defaultCopyFSharpCore, exiter, errorLoggerProvider, tcImportsCapture, dynamicAssemblyCreator)
 
+let mainCompilePreserve (ctok, argv, legacyReferenceResolver, bannerAlreadyPrinted, openBinariesInMemory, defaultCopyFSharpCore, exiter:Exiter, errorLoggerProvider, tcImportsCapture, dynamicAssemblyCreator) =
+
+    let d = new DisposablesTracker()
+    use e = new SaveAndRestoreConsoleEncoding()
+
+    let tcStateRef = ref None
+
+    let tcRes =
+        main0(ctok, argv, legacyReferenceResolver, bannerAlreadyPrinted, openBinariesInMemory, defaultCopyFSharpCore, exiter, errorLoggerProvider, d, Some tcStateRef)
+        
+    tcRes
+    |> main1
+    |> main2a
+    |> main2b (tcImportsCapture,dynamicAssemblyCreator)
+    |> main3 
+    |> main4 dynamicAssemblyCreator
+
+    let (Args (ctok, tcGlobals, tcImports, frameworkTcImports, generatedCcu, typedImplFiles, topAttrs, tcConfig, outfile, pdbfile, assemblyName, errorLogger, exiter: Exiter)) = tcRes
+    let tcState = tcStateRef.Value.Value
+
+    tcGlobals, tcImports, generatedCcu, tcState, typedImplFiles, topAttrs
